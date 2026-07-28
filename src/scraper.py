@@ -13,9 +13,13 @@ from PIL import Image
 import pytesseract
 
 
-def ambil_data_web(url):
+def ambil_data_web(url, mode_manual=False):
   chrome_options = Options()
-  chrome_options.add_argument("--headless")
+  
+  # Hanya gunakan mode headless jika mode_manual adalah False
+  if not mode_manual:
+    chrome_options.add_argument("--headless")
+    
   chrome_options.add_argument("--no-sandbox")
   chrome_options.add_argument("--disable-dev-shm-usage")
   chrome_options.add_argument("--disable-gpu")
@@ -31,25 +35,29 @@ def ambil_data_web(url):
     
     driver.get(url)
     
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Memeriksa pop-up peringatan...")
-    try:
-      wait = WebDriverWait(driver, 10)
-      tombol_umur = wait.until(
-          EC.presence_of_element_located((
-              By.XPATH, 
-              "//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'over 18') "
-              "or contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'agree') "
-              "or contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'enter')]"
-          ))
-      )
-      driver.execute_script("arguments[0].click();", tombol_umur)
-      print(f"[{datetime.now().strftime('%H:%M:%S')}] Berhasil melewati konfirmasi usia!")
-      time.sleep(3)
-    except Exception:
-      print(f"[{datetime.now().strftime('%H:%M:%S')}] Pop-up usia tidak ditemukan atau sudah dilewati.")
+    if mode_manual:
+      print(f"[{datetime.now().strftime('%H:%M:%S')}] [MODE MANUAL AKTIF] Jendela browser telah dibuka.")
+      input(">>> Lakukan interaksi di browser, lalu tekan ENTER di sini untuk melanjutkan proses OCR...")
+    else:
+      print(f"[{datetime.now().strftime('%H:%M:%S')}] Memeriksa pop-up peringatan...")
+      try:
+        wait = WebDriverWait(driver, 10)
+        tombol_umur = wait.until(
+            EC.presence_of_element_located((
+                By.XPATH, 
+                "//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'over 18') "
+                "or contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'agree') "
+                "or contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'enter')]"
+            ))
+        )
+        driver.execute_script("arguments[0].click();", tombol_umur)
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Berhasil melewati konfirmasi usia!")
+        time.sleep(3)
+      except Exception:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Pop-up usia tidak ditemukan atau sudah dilewati.")
 
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Menunggu JavaScript & Game merender halaman (10 detik)...")
-    time.sleep(10) 
+      print(f"[{datetime.now().strftime('%H:%M:%S')}] Menunggu JavaScript & Game merender halaman (10 detik)...")
+      time.sleep(10) 
     
     iframes = driver.find_elements(By.TAG_NAME, "iframe")
     if iframes:
