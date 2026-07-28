@@ -1,4 +1,5 @@
 # File: src/scraper.py
+import os
 import time
 import io
 from datetime import datetime
@@ -15,6 +16,11 @@ import pytesseract
 
 def ambil_data_web(url, mode_manual=False):
   chrome_options = Options()
+  
+  # --- LOGIKA BARU: Menyimpan Profil dan Sesi Browser ---
+  # Folder 'chrome_profile' akan dibuat otomatis di dalam folder project Anda
+  path_profil = os.path.abspath('chrome_profile')
+  chrome_options.add_argument(f"--user-data-dir={path_profil}")
   
   # Hanya gunakan mode headless jika mode_manual adalah False
   if not mode_manual:
@@ -37,7 +43,7 @@ def ambil_data_web(url, mode_manual=False):
     
     if mode_manual:
       print(f"[{datetime.now().strftime('%H:%M:%S')}] [MODE MANUAL AKTIF] Jendela browser telah dibuka.")
-      input(">>> Lakukan interaksi di browser, lalu tekan ENTER di sini untuk melanjutkan proses OCR...")
+      input(">>> Lakukan interaksi di browser (Sesi ini akan TERSIMPAN), lalu tekan ENTER di sini untuk melanjutkan proses OCR...")
     else:
       print(f"[{datetime.now().strftime('%H:%M:%S')}] Memeriksa pop-up peringatan...")
       try:
@@ -54,7 +60,7 @@ def ambil_data_web(url, mode_manual=False):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Berhasil melewati konfirmasi usia!")
         time.sleep(3)
       except Exception:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Pop-up usia tidak ditemukan atau sudah dilewati.")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Pop-up usia tidak ditemukan atau sudah dilewati (Mungkin dari riwayat sebelumnya).")
 
       print(f"[{datetime.now().strftime('%H:%M:%S')}] Menunggu JavaScript & Game merender halaman (10 detik)...")
       time.sleep(10) 
@@ -65,7 +71,6 @@ def ambil_data_web(url, mode_manual=False):
       driver.switch_to.frame(iframes[0])
       time.sleep(5) 
     
-    # --- LOGIKA BARU OCR (SCREENSHOT) ---
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Mengambil screenshot dari game (Canvas)...")
     screenshot = driver.get_screenshot_as_png()
     driver.quit()
@@ -75,7 +80,6 @@ def ambil_data_web(url, mode_manual=False):
     
     # Ekstrak teks dari gambar menggunakan Tesseract OCR
     teks_hasil_ocr = pytesseract.image_to_string(image)
-    # -------------------------------------
     
   except Exception as e:
     print(f'[ERROR] Gagal menjalankan operasi Selenium/OCR: {e}')
