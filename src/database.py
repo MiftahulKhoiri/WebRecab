@@ -4,7 +4,7 @@ import os
 
 class DatabaseFile:
 
-  def __init__(self, folder_name='data'):
+  def __init__(self, folder_name='dataweb'):
     self.folder_name = folder_name
     if not os.path.exists(self.folder_name):
       os.makedirs(self.folder_name)
