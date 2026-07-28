@@ -1,5 +1,6 @@
 # File: src/scraper.py
 import time
+import io
 from datetime import datetime
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -8,6 +9,8 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from PIL import Image
+import pytesseract
 
 
 def ambil_data_web(url):
@@ -17,6 +20,8 @@ def ambil_data_web(url):
   chrome_options.add_argument("--disable-dev-shm-usage")
   chrome_options.add_argument("--disable-gpu")
   chrome_options.add_argument("--log-level=3")
+  # Mengatur ukuran layar virtual agar screenshot tidak terpotong
+  chrome_options.add_argument("--window-size=1920,1080")
 
   print(f"[{datetime.now().strftime('%H:%M:%S')}] Membuka browser virtual...")
   
@@ -29,7 +34,6 @@ def ambil_data_web(url):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Memeriksa pop-up peringatan...")
     try:
       wait = WebDriverWait(driver, 10)
-      # Memperluas pencarian tombol (bisa jadi teksnya "Enter", "Agree", dll)
       tombol_umur = wait.until(
           EC.presence_of_element_located((
               By.XPATH, 
@@ -44,52 +48,49 @@ def ambil_data_web(url):
     except Exception:
       print(f"[{datetime.now().strftime('%H:%M:%S')}] Pop-up usia tidak ditemukan atau sudah dilewati.")
 
-    # Diperlama karena game biasanya membutuhkan waktu loading yang cukup berat
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Menunggu JavaScript merender halaman utama (10 detik)...")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Menunggu JavaScript & Game merender halaman (10 detik)...")
     time.sleep(10) 
     
-    # --- LOGIKA BARU UNTUK IFRAME ---
-    # Banyak web game memasukkan gamenya di dalam elemen "iframe" (bingkai dalam bingkai)
     iframes = driver.find_elements(By.TAG_NAME, "iframe")
     if iframes:
-      print(f"[{datetime.now().strftime('%H:%M:%S')}] Ditemukan {len(iframes)} iframe game. Mencoba masuk ke dalam iframe...")
+      print(f"[{datetime.now().strftime('%H:%M:%S')}] Masuk ke dalam iframe game...")
       driver.switch_to.frame(iframes[0])
-      time.sleep(5) # Tunggu lagi agar isi iframe termuat penuh
-    # --------------------------------
+      time.sleep(5) 
     
-    html_render = driver.page_source
+    # --- LOGIKA BARU OCR (SCREENSHOT) ---
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Mengambil screenshot dari game (Canvas)...")
+    screenshot = driver.get_screenshot_as_png()
     driver.quit()
     
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Memproses gambar menggunakan AI OCR (Membaca teks dari gambar)...")
+    image = Image.open(io.BytesIO(screenshot))
+    
+    # Ekstrak teks dari gambar menggunakan Tesseract OCR
+    teks_hasil_ocr = pytesseract.image_to_string(image)
+    # -------------------------------------
+    
   except Exception as e:
-    print(f'[ERROR] Gagal menjalankan Selenium: {e}')
+    print(f'[ERROR] Gagal menjalankan operasi Selenium/OCR: {e}')
     try:
       driver.quit()
     except:
       pass
     return None
 
-  print(f"[{datetime.now().strftime('%H:%M:%S')}] Mengekstrak data dari halaman...")
-  soup = BeautifulSoup(html_render, 'html.parser')
+  print(f"[{datetime.now().strftime('%H:%M:%S')}] Mengekstrak data teks...")
   data_kurs = []
   
-  tabel = soup.find('table')
-
-  if tabel:
-    baris = tabel.find_all('tr')
-    for row in baris:
-      kolom = row.find_all(['td', 'th'])
-      data_baris = [k.text.strip() for k in kolom]
-      if data_baris:
-        data_kurs.append(data_baris)
-  else:
-    for elemen in soup.find_all(['p', 'h1', 'h2', 'h3', 'div', 'span', 'li']):
-      teks = elemen.text.strip()
-      # Filter: Ambil teks yang punya isi, hindari baris baru ganda
-      if teks and len(teks) > 1 and "\n" not in teks:
-        data_kurs.append([teks])
+  # Memproses hasil teks dari OCR
+  if teks_hasil_ocr:
+    baris_teks = teks_hasil_ocr.split('\n')
+    for teks in baris_teks:
+      teks_bersih = teks.strip()
+      # Simpan jika teks memiliki isi
+      if teks_bersih and len(teks_bersih) > 1:
+        data_kurs.append([teks_bersih])
 
   if not data_kurs:
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] [WARNING] Data teks kosong! Game mungkin menggunakan elemen <canvas>.")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] [WARNING] OCR gagal menemukan teks yang jelas pada layar game.")
     return None
 
   waktu_sekarang = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -98,5 +99,5 @@ def ambil_data_web(url):
     if [waktu_sekarang] + baris not in data_dengan_waktu:
       data_dengan_waktu.append([waktu_sekarang] + baris)
 
-  print(f"[{datetime.now().strftime('%H:%M:%S')}] Berhasil menemukan {len(data_dengan_waktu)} baris teks data.")
+  print(f"[{datetime.now().strftime('%H:%M:%S')}] Berhasil merekam {len(data_dengan_waktu)} baris teks data dari gambar.")
   return data_dengan_waktu
