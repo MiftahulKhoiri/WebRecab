@@ -75,14 +75,15 @@ def submenu_simpan_data():
     tampilkan_logo()
     print('             MENU SIMPAN DATA             ')
     print('=' * 45)
-    print('1. Masukan alamat web')
-    print('2. Lihat hasil')
+    print('1. Otomatis (Background / Headless)')
+    print('2. Manual (Tampil Browser & Tunggu Input)')
+    print('3. Lihat hasil')
     print('0. Kembali')
     print('=' * 45)
 
-    pilihan = input('Pilih menu (0-2): ').strip()
+    pilihan = input('Pilih menu (0-3): ').strip()
 
-    if pilihan == '1':
+    if pilihan in ('1', '2'):
       url = input('Masukkan alamat web: ').strip()
       if not url:
         print('[PERINGATAN] Alamat web tidak boleh kosong!\n')
@@ -92,14 +93,16 @@ def submenu_simpan_data():
       if not url.startswith('http://') and not url.startswith('https://'):
         url = 'https://' + url
       
+      mode_manual = True if pilihan == '2' else False
+      
       print("") # Memberi jarak sebelum log scraper muncul
-      data = ambil_data_web(url)
+      data = ambil_data_web(url, mode_manual=mode_manual)
       if data:
         nama_file = 'hasilrekab.csv'
         db.simpan_csv(nama_file, data)
       input('\nTekan Enter untuk melanjutkan...')
 
-    elif pilihan == '2':
+    elif pilihan == '3':
       submenu_lihat_hasil()
 
     elif pilihan == '0':
