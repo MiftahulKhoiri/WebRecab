@@ -1,10 +1,10 @@
-csv
+import csv
 import os
 
 
 class DatabaseFile:
 
-  def __init__(self, folder_name='dataweb'):
+  def __init__(self, folder_name='data'):
     self.folder_name = folder_name
     if not os.path.exists(self.folder_name):
       os.makedirs(self.folder_name)
